@@ -1,4 +1,4 @@
-# 💧 UNALWater - Medallion Architecture in Databricks
+# 💧 city-water-databricks-medallion-lakehouse
 
 ## 1. Introduction
 
