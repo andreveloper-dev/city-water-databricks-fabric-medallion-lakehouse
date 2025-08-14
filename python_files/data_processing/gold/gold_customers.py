@@ -1,85 +1,37 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # Explicación del Notebook
-# MAGIC
-# MAGIC Este notebook realiza los siguientes pasos:
-# MAGIC
-# MAGIC 1. **Carga de Datos**:
-# MAGIC    - Se cargan dos tablas de datos usando Spark: `Silver_Orders` (órdenes) y `Bronze_Geodata` (geodatos).
-# MAGIC
-# MAGIC 2. **Procesamiento de Geodatos**:
-# MAGIC    - De la tabla de geodatos, se seleccionan y renombran las columnas relevantes:
-# MAGIC      - `IDENTIFICACION` se renombra como `district`.
-# MAGIC      - `NOMBRE` se renombra como `neighborhood`.
-# MAGIC      - Se mantiene la columna `geometry`.
-# MAGIC
-# MAGIC 3. **Visualización**:
-# MAGIC    - Se visualiza el DataFrame resultante `geodata` para explorar los datos geográficos procesados.
-
-# COMMAND ----------
-
-# MAGIC %run ../Transversal/config
-
-# COMMAND ----------
-
-# MAGIC %run ../Transversal/utils
-
-# COMMAND ----------
-
 from pyspark.sql.functions import col
-
+from pyspark.sql.window import Window
+from pyspark.sql.functions import to_timestamp, row_number, sum as _sum, dense_rank
 
 orders = spark.table(Silver_Orders)
-
 geodata = spark.table(Bronze_Geodata)
-
 geodata = geodata.select(
     col('IDENTIFICACION').alias('district'),
     col('NOMBRE').alias('neighborhood'),
     'geometry'
 )
-
-
-
-# COMMAND ----------
-
 display(geodata)
 
-# COMMAND ----------
-
-from pyspark.sql.window import Window
-from pyspark.sql.functions import to_timestamp, row_number, sum as _sum, dense_rank
-
-
 def customers_location(df_orders, geodata, table_gold):
-
     orders_filtered = df_orders.select('district',
                                     'neighborhood',
                                     'quantity_products')
-
     orders_grouped = orders_filtered.groupBy("district", "neighborhood").agg(
     _sum("quantity_products").alias("total_products"))
-
     window_spec = Window.orderBy(col("total_products").desc())
     orders_filtered_ranked = orders_grouped.withColumn("ranking", dense_rank().over(window_spec))
-
     orders_with_geom = orders_filtered_ranked.join(
     geodata,
     on=["district", "neighborhood"],
     how="left"
     )
-    
     gdf_orders = spark_to_geopandas(orders_with_geom)
     gdf_orders = gdf_orders.set_crs("EPSG:3116", allow_override=True)
     gdf_orders["centroid"] = gdf_orders["geometry"].centroid
     gdf_orders = gdf_orders.to_crs("EPSG:4326")
     gdf_orders["longitude"] = gdf_orders["centroid"].x
     gdf_orders["latitude"] = gdf_orders["centroid"].y
-
     orders_enriched = spark.createDataFrame(gdf_orders.drop(columns=["geometry", "centroid"]))
     orders_enriched = orders_enriched.orderBy(col("ranking").asc())
-
-
     orders_enriched.write\
     .format("delta")\
     .mode("overwrite")\
@@ -88,25 +40,12 @@ def customers_location(df_orders, geodata, table_gold):
 
     return orders_enriched
 
-# COMMAND ----------
 
 customers_location(
     df_orders=orders,
     geodata=geodata,
     table_gold=Gold_Location_Customers
 )
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC asdsadasd
-
-# COMMAND ----------
-
-from pyspark.sql.window import Window
-from pyspark.sql.functions import to_timestamp, row_number, sum as _sum, dense_rank
-
-
 orders = spark.table(Silver_Orders)
 print(orders.head())
 geodata = spark.table(Bronze_Geodata)
@@ -117,37 +56,28 @@ geodata = geodata.select(
     'geometry'
 )
 print(geodata.head())
-
-df_orders=orders
-geodata=geodata
-table_gold=Gold_Location_Customers
-
+df_orders = orders
+geodata = geodata
+table_gold = Gold_Location_Customers
 orders_filtered = df_orders.select('district',
                                     'neighborhood',
                                     'quantity_products')
-
 orders_grouped = orders_filtered.groupBy("district", "neighborhood").agg(_sum("quantity_products").alias("total_products"))
-
 window_spec = Window.orderBy(col("total_products").desc())
 orders_filtered_ranked = orders_grouped.withColumn("ranking", dense_rank().over(window_spec))
-
 orders_with_geom = orders_filtered_ranked.join(
     geodata,
     on=["district", "neighborhood"],
     how="left"
-    )
-    
+    )    
 gdf_orders = spark_to_geopandas(orders_with_geom)
 gdf_orders = gdf_orders.set_crs("EPSG:3116", allow_override=True)
 gdf_orders["centroid"] = gdf_orders["geometry"].centroid
 gdf_orders = gdf_orders.to_crs("EPSG:4326")
 gdf_orders["longitude"] = gdf_orders["centroid"].x
 gdf_orders["latitude"] = gdf_orders["centroid"].y
-
 orders_enriched = spark.createDataFrame(gdf_orders.drop(columns=["geometry", "centroid"]))
 orders_enriched = orders_enriched.orderBy(col("ranking").asc())
-
-
 orders_enriched.write\
     .format("delta")\
     .mode("overwrite")\

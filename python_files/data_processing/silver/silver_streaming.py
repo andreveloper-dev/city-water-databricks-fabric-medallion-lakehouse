@@ -1,58 +1,23 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # Explicación del Notebook
-# MAGIC
-# MAGIC Este notebook realiza procesamiento de datos geoespaciales y de pedidos utilizando PySpark y Delta Lake en Databricks.
-# MAGIC
-# MAGIC ## 1. Procesamiento de Geodatos
-# MAGIC - Se carga una tabla de datos geográficos (`Bronze_Geodata`) y se convierte a un GeoDataFrame.
-# MAGIC - Se extraen los polígonos de barrios y comunas y se transmiten como variable de broadcast para eficiencia.
-# MAGIC - Se define una función UDF (`get_comuna_barrio`) que, dado una latitud y longitud, determina a qué comuna y barrio pertenece el punto geográfico.
-# MAGIC
-# MAGIC ## 2. Procesamiento de Pedidos (Streaming)
-# MAGIC - Se define la función `silver_stream` que lee datos de pedidos en streaming desde una tabla Delta (`table_bronze`).
-# MAGIC - Se eliminan duplicados por `order_id`.
-# MAGIC - Se convierte la columna de fecha a timestamp y se enriquece cada pedido con la información geográfica de comuna y barrio usando la UDF definida.
-# MAGIC - Se seleccionan y transforman columnas relevantes, incluyendo descomposición de la fecha en año, mes, día, hora, minuto y segundo.
-# MAGIC - Finalmente, los datos enriquecidos se escriben en una tabla Delta (`table_silver`) en modo append, con control de versiones y tolerancia a cambios de esquema.
-# MAGIC
-# MAGIC Este flujo permite mantener una tabla Silver de pedidos enriquecida con información geográfica, lista para análisis posteriores.
-
-# COMMAND ----------
-
-# MAGIC %run ../Transversal/config
-
-# COMMAND ----------
-
-# MAGIC %run ../Transversal/utils
-
-# COMMAND ----------
-
 from pyspark.sql.functions import udf, col
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from shapely.geometry import Point, shape
+from pyspark.sql.functions import to_timestamp, date_format, year, month, dayofmonth, hour, minute, second
+import time
 
 neighborhoods_spark_df = spark.table(Bronze_Geodata)
 gdf_neighborhoods = spark_to_geopandas(df_spark=neighborhoods_spark_df)
-
-
 polygons = [
     (row['IDENTIFICACION'], row['NOMBRE'], shape(row['geometry']))
     for _, row in gdf_neighborhoods.iterrows()
 ]
-
 broadcast_polygons = spark.sparkContext.broadcast(polygons)
 
 def get_comuna_barrio(lat, lon):
-
     point = Point(float(lon), float(lat))
-
     for comuna, barrio, poly in broadcast_polygons.value:
         if poly.contains(point):
             return (str(comuna), str(barrio))
-            
     return ('DESCONOCIDA', 'DESCONOCIDO')
-
 
 schema = StructType([
     StructField("comuna", StringType(), True),
@@ -60,12 +25,6 @@ schema = StructType([
 ])
 
 comuna_barrio_udf = udf(get_comuna_barrio, schema)
-
-# COMMAND ----------
-
-from pyspark.sql.functions import to_timestamp, date_format, year, month, dayofmonth, hour, minute, second
-import time
-
 
 def silver_stream(table_bronze, checkpoint, table_silver):
 
@@ -113,8 +72,6 @@ def silver_stream(table_bronze, checkpoint, table_silver):
     )
 
     return query
-
-
 
 query = silver_stream(
         table_bronze=Bronze_Orders,

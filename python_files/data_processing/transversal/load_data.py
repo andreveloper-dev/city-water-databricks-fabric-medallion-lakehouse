@@ -1,0 +1,8 @@
+customers = spark.read.parquet('dbfs:/Volumes/unalwater_v2/default/files/customers.parquet')
+employees = spark.read.parquet('dbfs:/Volumes/unalwater_v2/default/files/employees.parquet')
+geodata = spark.read.parquet('dbfs:/Volumes/unalwater_v2/default/files/medellin_neighborhoods.parquet')
+medellin = spark.read.parquet('dbfs:/Volumes/unalwater_v2/default/files/50001.parquet')
+customers.write.mode('overwrite').saveAsTable(Bronze_Customers)
+employees.write.mode('overwrite').saveAsTable(Bronze_Employes)
+geodata.write.mode('overwrite').saveAsTable(Bronze_Geodata)
+medellin.write.mode('overwrite').saveAsTable(Bronze_Medellin)
