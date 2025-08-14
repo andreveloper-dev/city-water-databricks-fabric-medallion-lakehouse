@@ -1,9 +1,9 @@
-# 💧 city-water-databricks-medallion-lakehouse
+# city-water-databricks-fabric-medallion-lakehouse
 
 ## 1. Introduction
 
 **Project Description:**  
-This project implements a modern Big Data architecture in **Databricks** using the **Medallion Architecture** (Bronze, Silver, Gold). It simulates water bottle sales events across Medellín to identify neighborhoods with the highest demand, aiming to optimize the marketing strategy of the fictional company **UNALWater**.
+This project implements a modern Big Data architecture in **Databricks** (also Microsoft Fabric) using the **Medallion Architecture** (Bronze, Silver, Gold). It simulates water bottle sales events across Medellín to identify neighborhoods with the highest demand, aiming to optimize the marketing strategy of the fictional company **UNALWater**.
 
 **Objectives:**
 - Design a scalable solution for ingesting and analyzing simulated real-time sales data.
