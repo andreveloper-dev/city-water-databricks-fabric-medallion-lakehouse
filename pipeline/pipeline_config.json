@@ -1,0 +1,76 @@
+resources:
+  jobs:
+    CITYWater_DEV:
+      name: CITYWater_DEV
+      tasks:
+        - task_key: simulate_data_dev
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Transversal/Data_Simulator
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: streaming_bronze
+          depends_on:
+            - task_key: simulate_data_dev
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Bronze/Bronze streaming
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: streaming_silver
+          depends_on:
+            - task_key: streaming_bronze
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Silver/Silver streaming
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: Dataset_train_model
+          depends_on:
+            - task_key: streaming_silver
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/Models/Data_Preprocessing
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: demand_prediction
+          depends_on:
+            - task_key: Dataset_train_model
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/Models/Demand prediction
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: gold_customers
+          depends_on:
+            - task_key: streaming_silver
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Gold/Gold customers
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: performance_operation
+          depends_on:
+            - task_key: streaming_silver
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Gold/Gold performance_operation
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: silver_customers
+          depends_on:
+            - task_key: streaming_silver
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Silver/Silver customers
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: silver_employees
+          depends_on:
+            - task_key: streaming_silver
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Silver/Silver employees
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+        - task_key: performance_employeer
+          depends_on:
+            - task_key: silver_employees
+          notebook_task:
+            notebook_path: /Workspace/CITYWater/DataProcesing/Gold/Gold employees
+            source: WORKSPACE
+          existing_cluster_id: 0731-150859-6tfv6a6o
+      queue:
+        enabled: true
+
